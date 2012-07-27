@@ -121,6 +121,10 @@ answer.prototype.done = function() {
     this.get_operation._operation_done(this.id, true);
 }
 
+answer.prototype.aborted = function() {
+    this.get_operation._operation_done(this.id, false);
+}
+
 answer.prototype.answer = function(resp, cb) {
     var self = this;
     this.partial(resp, function (err) {
