@@ -22,14 +22,15 @@ connect.prototype.request_operation = function(op, pars, cb) {
     });
 }
 
-function get_operation(host, op, qtt, proc_timeout) {
+function get_operation(host, pars) {
     var self = this;
     this.connect = new connect(host);
     this.opers_active = {};
     this.requesting_oper = false;
-    this.op = op;
-    this.qtt = qtt;
-    this.processing_timeout = proc_timeout || 5*60;
+    this.op = pars.op;
+    this.qtt = pars.qtt || 10;
+    this.processing_timeout = pars.timeout || 5*60;
+    this.retries = pars.retries || 500;
     this.pending_superv = {}
     process.nextTick(function () {
         self._recover_pending();
@@ -51,10 +52,18 @@ get_operation.prototype._recover_pending = function() {
             var el = dad[i];
             pending[el] = (self.pending_superv[el] || 0)+1;
             if(pending[el] >= 7) {
+                var el2 = null;
+                try {
+                    var elp = JSON.parse(el);
+                    var retry = (parseInt(elp[2]) || 0)+1;
+                    elp[2] = retry;
+                    if(retry < self.retries) el2 = JSON.stringify(elp);
+                } catch(e) {
+                };
                 var cl2 = self.connect._rediscli();
                 cl2.cmd('multi');
                 cl2.cmd('lrem', opd, -1, el);
-                cl2.cmd('lpush', 'msg/'+self.op, el);
+                if(el2) cl2.cmd('lpush', 'msg/'+self.op, el2);
                 cl2.cmd('exec');
                 cl2.end();
                 delete pending[el];
@@ -178,8 +187,14 @@ get_operation.prototype.end = function() {
     this.qtt = -1;
 }
 
-connect.prototype.listen_for_operations = function(op, qtt, proc_timeout) {
-    return new get_operation(this.host, op, qtt, proc_timeout);
+connect.prototype.listen_for_operations = function(pars) {
+    if(typeof pars != typeof {}) {
+        pars = {
+            op: arguments[0], qtt: arguments[1],
+            timeout: arguments[2], retries: arguments[3]
+        };
+    }
+    return new get_operation(this.host, pars);
 }
 
 connect.prototype.operation_result = function(id, timeout, cb) {
