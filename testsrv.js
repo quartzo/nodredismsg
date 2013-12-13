@@ -1,6 +1,6 @@
 var nodredismsg = require('./nodredismsg');
 
-var c = new nodredismsg.connect();
+var c = new nodredismsg.connect('[mymaster]');
 
 var s1 = c.listen_for_operations('multiply', 4);
 s1.on('error', console.error);

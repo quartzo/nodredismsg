@@ -9,7 +9,7 @@ function connect(host) {
 }
 
 connect.prototype._rediscli = function() {
-    return new nodredis.connect(6379, this.host);
+    return new nodredis.connect(this.host);
 }
 
 connect.prototype.request_operation = function(op, pars, cb) {
